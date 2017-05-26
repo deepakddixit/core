@@ -227,21 +227,27 @@ class File extends Node implements IFile, IFileNode {
 				}
 			}
 
-			// since we skipped the view we need to scan and emit the hooks ourselves
-			$storage->getUpdater()->update($internalPath);
+			// allow sync clients to send the mtime along in a header
+			$updatePropagated = false;
+			if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
+				$mtime = $this->sanitizeMtime($this->request->server ['HTTP_X_OC_MTIME']);
+				if ($this->fileView->touch($this->path, $mtime)) {
+					// touch propagates the update using view -> basicOperation -> writeUpdate
+					// No additional updater propagation required
+					$updatePropagated = true;
+					$this->header('X-OC-MTime: accepted');
+				}
+			}
+
+			if (!$updatePropagated) {
+				// since we skipped the view we need to scan and emit the hooks ourselves
+				$storage->getUpdater()->update($internalPath);
+			}
 
 			try {
 				$this->changeLock(ILockingProvider::LOCK_SHARED);
 			} catch (LockedException $e) {
 				throw new FileLocked($e->getMessage(), $e->getCode(), $e);
-			}
-
-			// allow sync clients to send the mtime along in a header
-			if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
-				$mtime = $this->sanitizeMtime($this->request->server ['HTTP_X_OC_MTIME']);
-				if ($this->fileView->touch($this->path, $mtime)) {
-					$this->header('X-OC-MTime: accepted');
-				}
 			}
 
 			if ($view) {
