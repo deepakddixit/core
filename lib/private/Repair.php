@@ -46,7 +46,6 @@ use OC\Repair\FillETags;
 use OC\Repair\InnoDB;
 use OC\Repair\RepairMimeTypes;
 use OC\Repair\SearchLuceneTables;
-use OC\Repair\UpdateOutdatedOcsIds;
 use OC\Repair\RepairInvalidShares;
 use OC\Repair\RepairUnmergedShares;
 use OCP\AppFramework\QueryException;
@@ -138,7 +137,6 @@ class Repair implements IOutput{
 			new DropOldTables(\OC::$server->getDatabaseConnection()),
 			new DropOldJobs(\OC::$server->getJobList()),
 			new RemoveGetETagEntries(\OC::$server->getDatabaseConnection()),
-			new UpdateOutdatedOcsIds(\OC::$server->getConfig()),
 			new RepairInvalidShares(\OC::$server->getConfig(), \OC::$server->getDatabaseConnection()),
 			new SharePropagation(\OC::$server->getConfig()),
 			new MoveAvatarOutsideHome(

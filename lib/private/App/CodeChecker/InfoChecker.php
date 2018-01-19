@@ -49,7 +49,6 @@ class InfoChecker extends BasicEmitter {
 		'dependencies', // TODO: Mandatory as of ownCloud 11
 		'documentation',
 		'namespace',
-		'ocsid',
 		'public',
 		'remote',
 		'repository',
@@ -58,6 +57,7 @@ class InfoChecker extends BasicEmitter {
 	];
 	private $deprecatedFields = [
 		'info',
+		'ocsid',
 		'require',
 		'requiremax',
 		'requiremin',
