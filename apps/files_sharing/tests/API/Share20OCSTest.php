@@ -3173,6 +3173,18 @@ class Share20OCSTest extends TestCase {
 	public function testAcceptRejectShare($method, $expectedState) {
 		$userShare = $this->makeReceivedUserShareForOperation();
 
+		$refetchedUserShare = $this->newShare();
+		$refetchedUserShare->setState($expectedState);
+		$refetchedUserShare->setNode($userShare->getNode());
+
+		$this->shareManager->expects($this->any())
+			->method('getShareById')
+			->with('ocinternal:123', 'currentUser')
+			->will($this->onConsecutiveCalls(
+				$userShare,
+				$refetchedUserShare
+			));
+
 		$this->shareManager->expects($this->once())
 			->method('updateShareForRecipient')
 			->with($userShare, 'currentUser');
@@ -3181,8 +3193,7 @@ class Share20OCSTest extends TestCase {
 		$ocs->method('formatShare')->will($this->returnArgument(0));
 		$result = $ocs->$method(123);
 
-		$this->assertContains($userShare, $result->getData(), 'result contains user share');
-		$this->assertEquals($expectedState, $userShare->getState());
+		$this->assertEquals($refetchedUserShare, $result->getData()[0], 'result contains updated user share');
 	}
 
 	/**
@@ -3197,7 +3208,7 @@ class Share20OCSTest extends TestCase {
 		$this->assertEquals($expected, $result);
 	}
 
-	private function makeReceivedUserShareForOperation($shareId = 123) {
+	private function makeReceivedUserShareForOperation() {
 		$node = $this->createMock(Node::class);
 		$node->expects($this->at(0))
 			->method('lock');
@@ -3205,18 +3216,13 @@ class Share20OCSTest extends TestCase {
 			->method('unlock');
 
 		$userShare = $this->newShare();
-		$userShare->setId($shareId);
+		$userShare->setId(123);
 		$userShare->setShareOwner('shareOwner');
 		$userShare->setSharedWith('currentUser');
 		$userShare->setShareType(\OCP\Share::SHARE_TYPE_USER);
 		$userShare->setState(\OCP\Share::STATE_PENDING);
 		$userShare->setPermissions(\OCP\Constants::PERMISSION_ALL);
 		$userShare->setNode($node);
-
-		$this->shareManager->expects($this->any())
-			->method('getShareById')
-			->with('ocinternal:' . $shareId, 'currentUser')
-			->willReturn($userShare);
 
 		return $userShare;
 	}
@@ -3243,8 +3249,13 @@ class Share20OCSTest extends TestCase {
 	 * @dataProvider providesAcceptRejectShare
 	 */
 	public function testAcceptRejectShareAccessDenied($method, $expectedState) {
-		$userShare = $this->makeReceivedUserShareForOperation(123);
+		$userShare = $this->makeReceivedUserShareForOperation();
 		$userShare->setPermissions(0);
+
+		$this->shareManager->expects($this->once())
+			->method('getShareById')
+			->with('ocinternal:123', 'currentUser')
+			->willReturn($userShare);
 
 		$this->shareManager->expects($this->never())
 			->method('updateShareForRecipient');
@@ -3259,7 +3270,12 @@ class Share20OCSTest extends TestCase {
 	 * @dataProvider providesAcceptRejectShare
 	 */
 	public function testAcceptRejectShareAccessNotRecipient($method, $expectedState) {
-		$userShare = $this->makeReceivedUserShareForOperation(123);
+		$userShare = $this->makeReceivedUserShareForOperation();
+
+		$this->shareManager->expects($this->any())
+			->method('getShareById')
+			->with('ocinternal:123', 'currentUser')
+			->willReturn($userShare);
 
 		$this->shareManager->expects($this->never())
 			->method('updateShareForRecipient');
@@ -3283,7 +3299,12 @@ class Share20OCSTest extends TestCase {
 	 * @dataProvider providesAcceptRejectShare
 	 */
 	public function testAcceptRejectShareOperationError($method, $expectedState) {
-		$userShare = $this->makeReceivedUserShareForOperation(123);
+		$userShare = $this->makeReceivedUserShareForOperation();
+
+		$this->shareManager->expects($this->once())
+			->method('getShareById')
+			->with('ocinternal:123', 'currentUser')
+			->willReturn($userShare);
 
 		$this->shareManager->expects($this->once())
 			->method('updateShareForRecipient')
