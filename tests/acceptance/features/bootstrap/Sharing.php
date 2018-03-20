@@ -1091,7 +1091,6 @@ trait Sharing {
 		$this->sendingToWith("DELETE", $url, null);
 	}
 
-	
 	/**
 	 * @When /^user "([^"]*)" (rejects|accepts) the share "([^"]*)" offered by user "([^"]*)" using the API$/
 	 * 
