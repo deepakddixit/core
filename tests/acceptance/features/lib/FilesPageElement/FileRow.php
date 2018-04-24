@@ -60,10 +60,10 @@ class FileRow extends OwncloudPage {
 	protected $declinePendingShareBtnXpath = "//a[@data-action='Reject']";
 
 	/**
-	 * 
+	 *
 	 * @return boolean
 	 */
-	public function isVisible() { 
+	public function isVisible() {
 		return $this->rowElement->isVisible();
 	}
 
@@ -377,14 +377,14 @@ class FileRow extends OwncloudPage {
 
 	/**
 	 * returns the share state (only works on the "Shared with you" page)
-	 * 
+	 *
 	 * @throws ElementNotFoundException
-	 * 
+	 *
 	 * @return string
 	 */
 	public function getShareState() {
 		$element = $this->rowElement->find("xpath", $this->shareStateXpath);
-		if (is_null($element)) {
+		if (\is_null($element)) {
 			throw new ElementNotFoundException(
 				__METHOD__ .
 				" sharing state element with xpath $this->shareStateXpath not found"
@@ -394,30 +394,30 @@ class FileRow extends OwncloudPage {
 	}
 
 	/**
-	 * 
+	 *
 	 * @throws ElementNotFoundException
-	 * 
+	 *
 	 * @return string
 	 */
 	public function getSharer() {
 		$element = $this->rowElement->find("xpath", $this->sharerXpath);
-		if (is_null($element)) {
+		if (\is_null($element)) {
 			throw new ElementNotFoundException(
 				__METHOD__ .
 				" sharer element with xpath $this->sharerXpath not found"
 			);
 		}
-		return trim($element->getText());
+		return \trim($element->getText());
 	}
 	/**
 	 *
 	 * @param Session $session
-	 * 
+	 *
 	 * @return void
 	 */
 	public function acceptShare($session) {
 		$element = $this->rowElement->find("xpath", $this->acceptShareBtnXpath);
-		if (is_null($element)) {
+		if (\is_null($element)) {
 			throw new ElementNotFoundException(
 				__METHOD__ .
 				" accept share button with xpath" .
@@ -431,17 +431,17 @@ class FileRow extends OwncloudPage {
 	/**
 	 *
 	 * @param Session $session
-	 * 
+	 *
 	 * @return void
 	 */
 	public function declineShare($session) {
 		//TODO decline already accepted share
 		$element = $this->rowElement->find("xpath", $this->declinePendingShareBtnXpath);
-		if (is_null($element)) {
+		if (\is_null($element)) {
 			$this->openFileActionsMenu($session);
 			$element = $this->rowElement->find("xpath", $this->declinePendingShareBtnXpath);
 		}
-		if (is_null($element)) {
+		if (\is_null($element)) {
 			throw new ElementNotFoundException(
 				__METHOD__ .
 				" decline share button with xpath" .

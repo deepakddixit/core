@@ -524,18 +524,13 @@ class Share20OCS {
 
 		$formatted = [];
 		foreach ($shares as $share) {
-			if ($stateFilter !== null && $share->getState() !== $stateFilter) {
-				continue;
-			}
-
-			if (!$this->canAccessShare($share)) {
-				continue;
-			}
-
-			try {
-				$formatted[] = $this->formatShare($share, true);
-			} catch (NotFoundException $e) {
-				// Ignore this share
+			if (($stateFilter === null || $share->getState() === $stateFilter) &&
+					$this->canAccessShare($share)) {
+				try {
+					$formatted[] = $this->formatShare($share, true);
+				} catch (NotFoundException $e) {
+					// Ignore this share
+				}
 			}
 		}
 
@@ -906,7 +901,7 @@ class Share20OCS {
 		// we actually want to update all shares related to the node in case there are multiple
 		// incoming shares for the same node (ex: receiving simultaneously through group share and user share)
 		$allShares = $this->shareManager->getSharedWith($this->currentUser->getUID(), \OCP\Share::SHARE_TYPE_USER, $node, -1, 0);
-		$allShares = array_merge($allShares, $this->shareManager->getSharedWith($this->currentUser->getUID(), \OCP\Share::SHARE_TYPE_GROUP, $node, -1, 0));
+		$allShares = \array_merge($allShares, $this->shareManager->getSharedWith($this->currentUser->getUID(), \OCP\Share::SHARE_TYPE_GROUP, $node, -1, 0));
 
 		// resolve and deduplicate target if accepting
 		if ($state === \OCP\Share::STATE_ACCEPTED) {
@@ -948,15 +943,15 @@ class Share20OCS {
 	 */
 	private function deduplicateShareTarget(IShare $share) {
 		$userFolder = $this->rootFolder->getUserFolder($this->currentUser->getUID());
-		$mountPoint = basename($share->getTarget());
-		$parentDir = dirname($share->getTarget());
+		$mountPoint = \basename($share->getTarget());
+		$parentDir = \dirname($share->getTarget());
 		if (!$userFolder->nodeExists($parentDir)) {
 			$parentDir = Helper::getShareFolder();
 		}
 
 		$pathAttempt = \OC\Files\Filesystem::normalizePath($parentDir . '/' . $share->getTarget());
 
-		$pathinfo = pathinfo($pathAttempt);
+		$pathinfo = \pathinfo($pathAttempt);
 		$ext = (isset($pathinfo['extension'])) ? '.'.$pathinfo['extension'] : '';
 		$name = $pathinfo['filename'];
 
@@ -966,7 +961,7 @@ class Share20OCS {
 			$i++;
 		}
 
-		$share->setTarget(basename($pathAttempt));
+		$share->setTarget(\basename($pathAttempt));
 
 		return $share;
 	}
