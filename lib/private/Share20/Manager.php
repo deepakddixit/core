@@ -797,6 +797,12 @@ class Manager implements IManager {
 			$update = true;
 		}
 
+		if ($share->getName() !== $originalShare->getName()) {
+			$shareAfterUpdateEvent->setArgument('sharenameupdated', true);
+			$shareAfterUpdateEvent->setArgument('oldname', $originalShare->getName());
+			$update = true;
+		}
+
 		if ($update === true) {
 			$this->eventDispatcher->dispatch('share.afterupdate', $shareAfterUpdateEvent);
 		}

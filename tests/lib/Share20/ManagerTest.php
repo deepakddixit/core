@@ -2819,6 +2819,7 @@ class ManagerTest extends \Test\TestCase {
 		$share = $this->manager->newShare();
 		$share->setProviderId('foo')
 			->setId('42')
+			->setName('newname')
 			->setShareType(\OCP\Share::SHARE_TYPE_LINK)
 			->setSharedBy('owner')
 			->setShareOwner('owner')
@@ -2864,6 +2865,10 @@ class ManagerTest extends \Test\TestCase {
 		$this->assertTrue($calledAfterUpdate[1]->getArgument('expirationdateupdated'));
 		$this->assertArrayHasKey('oldexpirationdate', $calledAfterUpdate[1]);
 		$this->assertNull($calledAfterUpdate[1]->getArgument('oldexpirationdate'));
+		$this->assertArrayHasKey('sharenameupdated', $calledAfterUpdate[1]);
+		$this->assertTrue($calledAfterUpdate[1]->getArgument('sharenameupdated'));
+		$this->assertArrayHasKey('oldname', $calledAfterUpdate[1]);
+		$this->assertNull($calledAfterUpdate[1]->getArgument('oldname'));
 		$this->assertArrayHasKey('shareobject', $calledAfterUpdate[1]);
 		$this->assertInstanceOf(Share::class, $calledAfterUpdate[1]->getArgument('shareobject'));
 	}
