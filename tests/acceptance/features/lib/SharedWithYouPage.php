@@ -76,24 +76,6 @@ class SharedWithYouPage extends FilesPageBasic {
 	 *
 	 * @return void
 	 */
-	public function deleteFile(
-		$name,
-		Session $session,
-		$expectToDeleteFile = true,
-		$maxRetries = STANDARDRETRYCOUNT
-	) {
-		$this->declineFile($name, $session, $expectToDeleteFile, $maxRetries);
-	}
-
-	/**
-	 *
-	 * @param string|array $name
-	 * @param Session $session
-	 * @param bool $expectToDeleteFile
-	 * @param int $maxRetries
-	 *
-	 * @return void
-	 */
 	public function declineFile(
 		$name,
 		Session $session,
