@@ -73,7 +73,7 @@ class CreateMultiUser extends Base {
 	protected function configure() {
 		parent::configure();
 
-		$defaultUidPrefix = 'zombie-' . time() . '-';
+		$defaultUidPrefix = 'zombie-' . \time() . '-';
 
 		$this
 			->setName('testing:createusers')
@@ -91,12 +91,12 @@ class CreateMultiUser extends Base {
 		$progress->setFormatDefinition('custom', ' %current%/%max% [%bar%] %percent:3s%% Elapsed:%elapsed:6s% Estimated:%estimated:-6s% Remaining:%remaining% %message%');
 		$progress->setFormat('custom');
 		$usersCreated = 0;
-		$start = round(microtime(true) * 1000);
+		$start = \round(\microtime(true) * 1000);
 		for($i=0; $i<$num; $i++) {
 			// Create a user and log them in
 			$uid = $this->getUid($prefix, $i);
-			$msElapsed = round(microtime(true) * 1000) - $start;
-			$rate = round($usersCreated / ($msElapsed/1000), 1);
+			$msElapsed = \round(\microtime(true) * 1000) - $start;
+			$rate = \round($usersCreated / ($msElapsed/1000), 1);
 			$progress->setMessage("Creating [$uid] Rate: $rate users/second");
 			try {
 				$user = $this->userManager->createUser($uid, $uid);
