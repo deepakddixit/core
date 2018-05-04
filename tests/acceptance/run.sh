@@ -12,8 +12,39 @@ OC_PATH=$SCRIPT_PATH/../../
 OCC=${OC_PATH}occ
 BEHAT=${OC_PATH}lib/composer/behat/behat/bin/behat
 
-SCENARIO_TO_RUN=$1
+BEHAT_FEATURE=$1
 HIDE_OC_LOGS=$2
+
+# save the current language and set the language to "C"
+# we want to have it all in english to be able to parse outputs
+OLD_LANG=$LANG
+export LANG=C
+
+# Provide a default admin password, but let the caller pass it if they wish
+if [ -z "$ADMIN_PASSWORD" ]
+then
+	ADMIN_PASSWORD="admin"
+fi
+
+# @param $1 admin password
+# @param $2 occ url
+# @param $3 command
+# sets $REMOTE_OCC_STDOUT and $REMOTE_OCC_STDERR from returned xml data
+# @return occ return code given in the xml data
+remote_occ() {
+	RESULT=`curl -s -u admin:$1 $2 -d "command=$3"`
+	RETURN=`echo $RESULT | xmllint --xpath "string(ocs/data/code)" - | sed 's/ //g'`
+	# we could not find a proper return of the testing app, so something went wrong
+	if [ -z "$RETURN" ]
+	then
+		RETURN=1
+		REMOTE_OCC_STDERR=$RESULT
+	else
+		REMOTE_OCC_STDOUT=`echo $RESULT | xmllint --xpath "string(ocs/data/stdOut)" - | sed 's/ //g'`
+		REMOTE_OCC_STDERR=`echo $RESULT | xmllint --xpath "string(ocs/data/stdErr)" - | sed 's/ //g'`
+	fi
+	return $RETURN
+}
 
 function env_alt_home_enable {
 	$OCC config:app:set testing enable_alt_user_backend --value yes
@@ -85,11 +116,67 @@ else
 
     export TEST_SERVER_URL="http://localhost:$PORT"
     export TEST_SERVER_FED_URL="http://localhost:$PORT_FED"
+
+    # Give time for the PHP dev server to become available
+    # because we want to use it to get and change settings with the testing app
+    sleep 5
 fi
 
+# If a feature file has been specified but no suite, then deduce the suite
+if [ -n "$BEHAT_FEATURE" ] && [ -z "$BEHAT_SUITE" ]
+then
+    FEATURE_PATH=`dirname $BEHAT_FEATURE`
+    BEHAT_SUITE=`basename $FEATURE_PATH`
+fi
+
+if [ "$BEHAT_SUITE" ]
+then
+	BEHAT_SUITE_OPTION="--suite=$BEHAT_SUITE"
+	if [[ $BEHAT_SUITE == api* ]]
+	then
+	  TEST_TYPE_TAG="@api"
+	else
+	  TEST_TYPE_TAG="@webUI"
+	fi
+else
+	BEHAT_SUITE_OPTION=""
+	# We are running "all" suites in a single run.
+	# It is not practical/reasonable to do that with the webUI tests.
+	# So just run all the API tests.
+	TEST_TYPE_TAG="@api"
+fi
+
+# The endpoint to use to do occ commands via the testing app
+OCC_URL="$TEST_SERVER_URL/ocs/v2.php/apps/testing/api/v1/occ"
+
 # Set up personalized skeleton
-PREVIOUS_SKELETON_DIR=$($OCC --no-warnings config:system:get skeletondirectory)
-$OCC config:system:set skeletondirectory --value="$(pwd)/skeleton"
+remote_occ $ADMIN_PASSWORD $OCC_URL "--no-warnings config:system:get skeletondirectory"
+
+PREVIOUS_SKELETON_DIR=$REMOTE_OCC_STDOUT
+
+# $SRC_SKELETON_DIR is the path to the skeleton folder on the machine where the tests are executed
+# it is used for file comparisons in various tests
+if [ "$TEST_TYPE_TAG" == "@api" ]
+then
+  export SRC_SKELETON_DIR=$(pwd)/skeleton
+else
+  export SRC_SKELETON_DIR=$(pwd)/webUISkeleton
+fi
+
+# $SKELETON_DIR is the path to the skeleton folder on the machine where oC runs (system under test)
+# it is used to give users a defined set of files and folders for the tests
+if [ -z "$SKELETON_DIR" ]
+then
+	export SKELETON_DIR="$SRC_SKELETON_DIR"
+fi
+
+remote_occ $ADMIN_PASSWORD $OCC_URL "config:system:set skeletondirectory --value=$SKELETON_DIR"
+
+if [ $? -ne 0 ]
+then
+	echo -e "Could not set skeleton directory. Result:\n'$REMOTE_OCC_STDERR'"
+	exit 1
+fi
 
 PREVIOUS_HTTP_FALLBACK_SETTING=$($OCC --no-warnings config:system:get sharing.federation.allowHttpFallback)
 $OCC config:system:set sharing.federation.allowHttpFallback --type boolean --value true
@@ -145,7 +232,7 @@ else
 	BEHAT_FILTER_TAGS="~@skip&&~@masterkey_encryption"
 fi
 
-BEHAT_FILTER_TAGS="$BEHAT_FILTER_TAGS&&@api"
+BEHAT_FILTER_TAGS="$BEHAT_FILTER_TAGS&&$TEST_TYPE_TAG"
 
 if [ -n "$BEHAT_FILTER_TAGS" ]
 then
@@ -158,28 +245,8 @@ then
 	}'
 fi
 
-# If a feature file has been specified but no suite, then deduce the suite
-if [ -n "$SCENARIO_TO_RUN" ] && [ -z "$BEHAT_SUITE" ]
-then
-    FEATURE_PATH=`dirname $SCENARIO_TO_RUN`
-    BEHAT_SUITE=`basename $FEATURE_PATH`
-fi
-
-if [ "$BEHAT_SUITE" ]
-then
-	BEHAT_SUITE_OPTION="--suite=$BEHAT_SUITE"
-else
-	BEHAT_SUITE_OPTION=""
-fi
-
-BEHAT_PARAMS="$BEHAT_PARAMS" $BEHAT --strict -f junit -f pretty $BEHAT_SUITE_OPTION $SCENARIO_TO_RUN
+BEHAT_PARAMS="$BEHAT_PARAMS" $BEHAT --strict -f junit -f pretty $BEHAT_SUITE_OPTION $BEHAT_FEATURE
 RESULT=$?
-
-if [ "${TEST_WITH_PHPDEVSERVER}" == "true" ]
-then
-    kill $PHPPID
-    kill $PHPPID_FED
-fi
 
 $OCC files_external:delete -y $ID_STORAGE
 
@@ -195,9 +262,9 @@ fi
 # Put back personalized skeleton
 if [ "A$PREVIOUS_SKELETON_DIR" = "A" ]
 then
-	$OCC config:system:delete skeletondirectory
+	remote_occ $ADMIN_PASSWORD $OCC_URL "config:system:delete skeletondirectory"
 else
-	$OCC config:system:set skeletondirectory --value="$PREVIOUS_SKELETON_DIR"
+	remote_occ $ADMIN_PASSWORD $OCC_URL "config:system:set skeletondirectory --value=$PREVIOUS_SKELETON_DIR"
 fi
 
 # Put back HTTP fallback setting
@@ -230,6 +297,12 @@ fi
 if [ "$OC_TEST_ENCRYPTION_USER_KEYS_ENABLED" = "1" ]
 then
 	env_encryption_disable_user_keys
+fi
+
+if [ "${TEST_WITH_PHPDEVSERVER}" == "true" ]
+then
+    kill $PHPPID
+    kill $PHPPID_FED
 fi
 
 if [ -z $HIDE_OC_LOGS ]
